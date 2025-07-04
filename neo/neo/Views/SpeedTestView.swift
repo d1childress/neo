@@ -117,22 +117,34 @@ struct SpeedTestView: View {
         
         let startTime = Date()
         let delegate = RelaxedURLSessionDelegate()
-        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 60
+        config.timeoutIntervalForResource = 60
+        let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
+        
+        // Ensure session is properly cleaned up
+        defer {
+            session.invalidateAndCancel()
+        }
         
         guard let downloadURL = URL(string: "https://openspeedtest.com/downloading") else {
-            self.output += "Download Error: Invalid URL\n"
-            completion?()
+            DispatchQueue.main.async {
+                self.output += "Download Error: Invalid URL\n"
+                completion?()
+            }
             return
         }
         
         var request = URLRequest(url: downloadURL)
-        request.timeoutInterval = 60 // 60 seconds timeout
+        request.timeoutInterval = 60
         
-        let task = session.downloadTask(with: request) { tempURL, response, error in
+        let task = session.downloadTask(with: request) { [weak self] tempURL, response, error in
             let endTime = Date()
             let duration = endTime.timeIntervalSince(startTime)
             
             DispatchQueue.main.async {
+                guard let self = self else { return }
+                
                 if let error = error {
                     self.output += "Download Error: \(error.localizedDescription)\n"
                 } else if let tempURL = tempURL {
@@ -163,34 +175,56 @@ struct SpeedTestView: View {
             self.output += "\nStarting upload test...\n"
         }
         
-        // Generate a 1MB payload of random data for the upload test
-        let uploadData = Data(count: 1 * 1024 * 1024)
+        // Generate actual random data for the upload test (1MB)
+        let dataSize = 1 * 1024 * 1024
+        var uploadData = Data(capacity: dataSize)
+        for _ in 0..<dataSize {
+            uploadData.append(UInt8.random(in: 0...255))
+        }
         
         let delegate = RelaxedURLSessionDelegate()
-        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 60
+        config.timeoutIntervalForResource = 60
+        let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
+        
+        // Ensure session is properly cleaned up
+        defer {
+            session.invalidateAndCancel()
+        }
         
         guard let uploadURL = URL(string: "https://ptsv3.com/upload") else {
-            self.output += "Upload Error: Invalid URL\n"
-            completion?()
+            DispatchQueue.main.async {
+                self.output += "Upload Error: Invalid URL\n"
+                completion?()
+            }
             return
         }
 
         var request = URLRequest(url: uploadURL)
         request.httpMethod = "POST"
-        request.timeoutInterval = 60 // 60 seconds timeout
+        request.timeoutInterval = 60
         
         let startTime = Date()
-        let task = session.uploadTask(with: request, from: uploadData) { data, response, error in
+        let task = session.uploadTask(with: request, from: uploadData) { [weak self] data, response, error in
             let endTime = Date()
             let duration = endTime.timeIntervalSince(startTime)
             
             DispatchQueue.main.async {
+                guard let self = self else { return }
+                
                 if let error = error {
                     self.output += "Upload Error: \(error.localizedDescription)\n"
                 } else {
                     let mb = Double(uploadData.count) / 1024.0 / 1024.0
                     let speed = mb / duration
                     self.output += String(format: "Uploaded %.2f MB in %.2f seconds.\nSpeed: %.2f MB/s\n", mb, duration, speed)
+                    
+                    if self.showAdvancedDiagnostics, let httpResponse = response as? HTTPURLResponse {
+                        self.output += "\n--- Advanced Upload Diagnostics ---\n"
+                        self.output += "Status Code: \(httpResponse.statusCode)\n"
+                        self.output += "-------------------------------\n"
+                    }
                 }
                 completion?()
             }

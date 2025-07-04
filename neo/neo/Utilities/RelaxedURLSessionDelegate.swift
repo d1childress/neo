@@ -1,4 +1,5 @@
 import Foundation
+import Security
 
 class RelaxedURLSessionDelegate: NSObject, URLSessionDelegate {
     func urlSession(_ session: URLSession,
@@ -9,9 +10,20 @@ class RelaxedURLSessionDelegate: NSObject, URLSessionDelegate {
         if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
             // Get the server's certificate
             if let serverTrust = challenge.protectionSpace.serverTrust {
-                // Tell the session to proceed with the connection, trusting the server's certificate
-                completionHandler(.useCredential, URLCredential(trust: serverTrust))
-                return
+                // Perform basic certificate validation
+                var result: SecTrustResultType = .invalid
+                let status = SecTrustEvaluate(serverTrust, &result)
+                
+                // Allow connection only if certificate validation succeeds or has minor issues
+                if status == errSecSuccess && (result == .unspecified || result == .proceed) {
+                    completionHandler(.useCredential, URLCredential(trust: serverTrust))
+                    return
+                } else {
+                    // Log the certificate validation failure for debugging
+                    print("SSL Certificate validation failed for \(challenge.protectionSpace.host)")
+                    completionHandler(.performDefaultHandling, nil)
+                    return
+                }
             }
         }
         

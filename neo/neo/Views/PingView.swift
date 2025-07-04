@@ -106,6 +106,27 @@ struct PingView: View {
     
     func pingHost() {
         output = ""
+        
+        // Validate and sanitize host input to prevent command injection
+        let sanitizedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sanitizedHost.isEmpty else {
+            output = "Error: Host cannot be empty"
+            return
+        }
+        
+        // Basic validation to prevent command injection
+        let allowedCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_:")
+        guard sanitizedHost.rangeOfCharacter(from: allowedCharacters.inverted) == nil else {
+            output = "Error: Host contains invalid characters. Only alphanumeric characters, dots, hyphens, underscores, and colons are allowed."
+            return
+        }
+        
+        // Additional length check
+        guard sanitizedHost.count <= 253 else { // RFC 1035 limit for domain names
+            output = "Error: Host name is too long (max 253 characters)"
+            return
+        }
+        
         isPinging = true
         let task = Process()
         currentTask = task
@@ -117,7 +138,7 @@ struct PingView: View {
             arguments.append("-c")
             arguments.append(pingCountText)
         }
-        arguments.append(host)
+        arguments.append(sanitizedHost)
         task.arguments = arguments
         
         let pipe = Pipe()

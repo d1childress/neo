@@ -154,9 +154,9 @@ struct PortScanView: View {
                 if openPorts.isEmpty {
                     results = "No open ports found."
                 } else {
-                    results = "Open ports on \\(host):\n"
-                    for _ in openPorts.sorted() {
-                        results += "\\(port)\n"
+                    results = "Open ports on \(self.host):\n"
+                    for port in openPorts.sorted() {
+                        results += "\(port)\n"
                     }
                 }
                 self.output = results
