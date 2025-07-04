@@ -9,6 +9,13 @@ struct PortScanView: View {
     @State private var isScanning = false
     @State private var verboseOutput = false
     @State private var limitPortRange = true
+    @State private var scanProgress: Double = 0.0
+    @State private var scannedPorts: Int = 0
+    @State private var totalPorts: Int = 0
+    
+    // Performance optimization: limit concurrent connections
+    private let maxConcurrentConnections = 50
+    private let connectionTimeout: TimeInterval = 2.0
     
     var body: some View {
         ZStack {
@@ -55,18 +62,40 @@ struct PortScanView: View {
                     }
                 }
                 .toggleStyle(CheckboxToggleStyle())
+                
+                // Progress indicator
+                if isScanning {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Scanning progress: \(scannedPorts)/\(totalPorts)")
+                                .foregroundColor(.white)
+                                .font(.caption)
+                            Spacer()
+                            Text("\(Int(scanProgress * 100))%")
+                                .foregroundColor(.white)
+                                .font(.caption)
+                        }
+                        ProgressView(value: scanProgress)
+                            .progressViewStyle(LinearProgressViewStyle())
+                    }
+                }
+                
                 HStack {
                     Spacer()
-                    Button(action: scanPorts) {
+                    Button(action: isScanning ? stopScan : scanPorts) {
                         if isScanning {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            HStack {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(0.8)
+                                Text("Stop")
+                                    .foregroundColor(.white)
+                            }
                         } else {
                             Text("Scan")
                                 .foregroundColor(.white)
                         }
                     }
-                    .disabled(isScanning)
                 }
                 ZStack(alignment: .bottomTrailing) {
                     ScrollView {
@@ -96,9 +125,21 @@ struct PortScanView: View {
         .preferredColorScheme(.dark)
     }
     
+    @State private var scanTask: Task<Void, Never>?
+    
+    func stopScan() {
+        scanTask?.cancel()
+        isScanning = false
+        DispatchQueue.main.async {
+            self.output += "\n\n--- Scan stopped by user ---\n"
+        }
+    }
+    
     func scanPorts() {
         output = ""
         isScanning = true
+        scanProgress = 0.0
+        scannedPorts = 0
         
         let start: Int
         let end: Int
@@ -116,52 +157,113 @@ struct PortScanView: View {
             isScanning = false
             return
         }
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            var openPorts: [Int] = []
-            let group = DispatchGroup()
-            for port in start...end {
-                group.enter()
-                let connection = NWConnection(host: NWEndpoint.Host(self.host), port: NWEndpoint.Port(rawValue: UInt16(port))!, using: .tcp)
-                let startTime = Date()
-                
-                connection.stateUpdateHandler = { state in
-                    switch state {
-                    case .ready:
-                        _ = Date().timeIntervalSince(startTime)
-                        DispatchQueue.main.async {
-                            openPorts.append(port)
-                        }
-                        connection.cancel()
-                        group.leave()
-                    case .failed(_):
-                        if verboseOutput {
-                            DispatchQueue.main.async {
-                                self.output += "Port \\(port): Closed\n"
-                            }
-                        }
-                        connection.cancel()
-                        group.leave()
-                    default:
-                        break
+        
+        totalPorts = end - start + 1
+        let ports = Array(start...end)
+        
+        DispatchQueue.main.async {
+            self.output = "Starting scan of \(self.host) on ports \(start)-\(end)...\n\n"
+        }
+        
+        scanTask = Task {
+            await scanPortsOptimized(ports: ports)
+        }
+    }
+    
+    @MainActor
+    private func scanPortsOptimized(ports: [Int]) async {
+        var openPorts: [Int] = []
+        
+        // Process ports in chunks to limit concurrent connections
+        let chunks = ports.chunked(into: maxConcurrentConnections)
+        
+        for chunk in chunks {
+            guard !Task.isCancelled else { break }
+            
+            await withTaskGroup(of: (Int, Bool).self) { group in
+                for port in chunk {
+                    group.addTask {
+                        let isOpen = await self.testPort(port: port)
+                        return (port, isOpen)
                     }
                 }
-                connection.start(queue: .global())
+                
+                for await (port, isOpen) in group {
+                    scannedPorts += 1
+                    scanProgress = Double(scannedPorts) / Double(totalPorts)
+                    
+                    if isOpen {
+                        openPorts.append(port)
+                        output += "Port \(port): Open\n"
+                    } else if verboseOutput {
+                        output += "Port \(port): Closed\n"
+                    }
+                }
+            }
+        }
+        
+        if !Task.isCancelled {
+            var results = "\n--- Scan Complete ---\n"
+            if openPorts.isEmpty {
+                results += "No open ports found.\n"
+            } else {
+                results += "Found \(openPorts.count) open ports:\n"
+                for port in openPorts.sorted() {
+                    results += "\(port)\n"
+                }
+            }
+            output += results
+        }
+        
+        isScanning = false
+    }
+    
+    private func testPort(port: Int) async -> Bool {
+        return await withCheckedContinuation { continuation in
+            let connection = NWConnection(
+                host: NWEndpoint.Host(self.host),
+                port: NWEndpoint.Port(rawValue: UInt16(port))!,
+                using: .tcp
+            )
+            
+            var hasReturned = false
+            
+            // Set up timeout
+            DispatchQueue.global().asyncAfter(deadline: .now() + connectionTimeout) {
+                if !hasReturned {
+                    hasReturned = true
+                    connection.cancel()
+                    continuation.resume(returning: false)
+                }
             }
             
-            group.notify(queue: .main) {
-                var results = ""
-                if openPorts.isEmpty {
-                    results = "No open ports found."
-                } else {
-                    results = "Open ports on \\(host):\n"
-                    for _ in openPorts.sorted() {
-                        results += "\\(port)\n"
-                    }
+            connection.stateUpdateHandler = { state in
+                guard !hasReturned else { return }
+                
+                switch state {
+                case .ready:
+                    hasReturned = true
+                    connection.cancel()
+                    continuation.resume(returning: true)
+                case .failed(_):
+                    hasReturned = true
+                    connection.cancel()
+                    continuation.resume(returning: false)
+                default:
+                    break
                 }
-                self.output = results
-                self.isScanning = false
             }
+            
+            connection.start(queue: .global())
+        }
+    }
+}
+
+// Helper extension for array chunking
+extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        return stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
         }
     }
 }

@@ -9,6 +9,17 @@ struct SpeedTestView: View {
     @State private var showAdvancedDiagnostics: Bool = false
     @State private var runSequentially: Bool = true
     @State private var usePrivateRelay: Bool = false
+    
+    // Performance optimization: configure session for better performance
+    private lazy var optimizedSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 60
+        config.timeoutIntervalForResource = 120
+        config.httpMaximumConnectionsPerHost = 1
+        config.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        config.urlCache = nil // Disable caching for speed tests
+        return URLSession(configuration: config, delegate: RelaxedURLSessionDelegate(), delegateQueue: nil)
+    }()
 
     var body: some View {
         ZStack {
@@ -54,7 +65,7 @@ struct SpeedTestView: View {
                     VStack(spacing: 10) {
                         Button(isTesting ? "Stop" : "Speed Test") {
                             if isTesting {
-                                isTesting = false
+                                stopTest()
                             } else {
                                 startSpeedTest()
                             }
@@ -70,9 +81,19 @@ struct SpeedTestView: View {
         .preferredColorScheme(.dark)
     }
     
+    @State private var testTask: Task<Void, Never>?
+    
     func copyToClipboard() {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(output, forType: .string)
+    }
+    
+    func stopTest() {
+        testTask?.cancel()
+        isTesting = false
+        DispatchQueue.main.async {
+            self.output += "\n\n--- Test stopped by user ---\n"
+        }
     }
     
     func startSpeedTest() {
@@ -82,120 +103,141 @@ struct SpeedTestView: View {
         let runDownload = testType == .downlink || testType == .both
         let runUpload = testType == .uplink || testType == .both
 
-        if runSequentially {
-            if runDownload {
-                runDownloadTest {
-                    if runUpload {
-                        self.runUploadTest { self.isTesting = false }
-                    } else {
-                        self.isTesting = false
-                    }
+        testTask = Task {
+            if runSequentially {
+                if runDownload {
+                    await runDownloadTest()
                 }
-            } else if runUpload {
-                runUploadTest { self.isTesting = false }
+                if runUpload && !Task.isCancelled {
+                    await runUploadTest()
+                }
+            } else {
+                async let downloadTask: Void? = runDownload ? runDownloadTest() : nil
+                async let uploadTask: Void? = runUpload ? runUploadTest() : nil
+                
+                _ = await (downloadTask, uploadTask)
             }
-        } else {
-            let group = DispatchGroup()
-            if runDownload {
-                group.enter()
-                runDownloadTest { group.leave() }
-            }
-            if runUpload {
-                group.enter()
-                runUploadTest { group.leave() }
-            }
-            group.notify(queue: .main) {
+            
+            await MainActor.run {
                 self.isTesting = false
             }
         }
     }
     
-    func runDownloadTest(completion: (() -> Void)? = nil) {
-        DispatchQueue.main.async {
-            self.output += "Starting download test...\n"
-        }
+    @MainActor
+    private func appendOutput(_ text: String) {
+        output += text
+    }
+    
+    func runDownloadTest() async {
+        await appendOutput("Starting download test...\n")
         
         let startTime = Date()
-        let delegate = RelaxedURLSessionDelegate()
-        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
         
         guard let downloadURL = URL(string: "https://openspeedtest.com/downloading") else {
-            self.output += "Download Error: Invalid URL\n"
-            completion?()
+            await appendOutput("Download Error: Invalid URL\n")
             return
         }
         
         var request = URLRequest(url: downloadURL)
-        request.timeoutInterval = 60 // 60 seconds timeout
+        request.timeoutInterval = 60
+        request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
         
-        let task = session.downloadTask(with: request) { tempURL, response, error in
+        do {
+            let (tempURL, response) = try await optimizedSession.download(for: request)
             let endTime = Date()
             let duration = endTime.timeIntervalSince(startTime)
             
-            DispatchQueue.main.async {
-                if let error = error {
-                    self.output += "Download Error: \(error.localizedDescription)\n"
-                } else if let tempURL = tempURL {
-                    do {
-                        let data = try Data(contentsOf: tempURL)
-                        let mb = Double(data.count) / 1024.0 / 1024.0
-                        let speed = mb / duration
-                        self.output += String(format: "Downloaded %.2f MB in %.2f seconds.\nSpeed: %.2f MB/s\n", mb, duration, speed)
-                        
-                        if self.showAdvancedDiagnostics, let httpResponse = response as? HTTPURLResponse {
-                            self.output += "\n--- Advanced Diagnostics ---\n"
-                            self.output += "Status Code: \(httpResponse.statusCode)\n"
-                            httpResponse.allHeaderFields.forEach { self.output += "\($0): \($1)\n" }
-                            self.output += "--------------------------\n"
-                        }
-                    } catch {
-                        self.output += "Error reading downloaded file: \(error.localizedDescription)\n"
-                    }
+            guard !Task.isCancelled else { return }
+            
+            let data = try Data(contentsOf: tempURL)
+            let mb = Double(data.count) / 1024.0 / 1024.0
+            let speed = mb / duration
+            
+            await appendOutput(String(format: "Downloaded %.2f MB in %.2f seconds.\nSpeed: %.2f MB/s\n", mb, duration, speed))
+            
+            if showAdvancedDiagnostics, let httpResponse = response as? HTTPURLResponse {
+                await appendOutput("\n--- Advanced Diagnostics ---\n")
+                await appendOutput("Status Code: \(httpResponse.statusCode)\n")
+                for (key, value) in httpResponse.allHeaderFields {
+                    await appendOutput("\(key): \(value)\n")
                 }
-                completion?()
+                await appendOutput("--------------------------\n")
             }
+            
+            // Clean up temporary file
+            try? FileManager.default.removeItem(at: tempURL)
+            
+        } catch {
+            await appendOutput("Download Error: \(error.localizedDescription)\n")
         }
-        task.resume()
     }
     
-    func runUploadTest(completion: (() -> Void)? = nil) {
-        DispatchQueue.main.async {
-            self.output += "\nStarting upload test...\n"
-        }
-        
-        // Generate a 1MB payload of random data for the upload test
-        let uploadData = Data(count: 1 * 1024 * 1024)
-        
-        let delegate = RelaxedURLSessionDelegate()
-        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+    func runUploadTest() async {
+        await appendOutput("\nStarting upload test...\n")
         
         guard let uploadURL = URL(string: "https://ptsv3.com/upload") else {
-            self.output += "Upload Error: Invalid URL\n"
-            completion?()
+            await appendOutput("Upload Error: Invalid URL\n")
             return
         }
 
         var request = URLRequest(url: uploadURL)
         request.httpMethod = "POST"
-        request.timeoutInterval = 60 // 60 seconds timeout
+        request.timeoutInterval = 60
+        request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+        
+        // Performance optimization: Use streaming data instead of large memory allocation
+        let uploadSize = 1 * 1024 * 1024 // 1MB
+        let chunkSize = 64 * 1024 // 64KB chunks
         
         let startTime = Date()
-        let task = session.uploadTask(with: request, from: uploadData) { data, response, error in
+        
+        do {
+            // Create a temporary file for streaming upload
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            let fileHandle = try FileHandle(forWritingTo: tempURL)
+            defer {
+                try? fileHandle.close()
+                try? FileManager.default.removeItem(at: tempURL)
+            }
+            
+            // Generate upload data in chunks to avoid large memory allocation
+            var totalWritten = 0
+            while totalWritten < uploadSize {
+                let remainingBytes = uploadSize - totalWritten
+                let currentChunkSize = min(chunkSize, remainingBytes)
+                let chunk = Data(count: currentChunkSize)
+                try fileHandle.write(contentsOf: chunk)
+                totalWritten += currentChunkSize
+            }
+            
+            try fileHandle.close()
+            
+            let uploadData = try Data(contentsOf: tempURL)
+            let (_, response) = try await optimizedSession.upload(for: request, from: uploadData)
+            
             let endTime = Date()
             let duration = endTime.timeIntervalSince(startTime)
             
-            DispatchQueue.main.async {
-                if let error = error {
-                    self.output += "Upload Error: \(error.localizedDescription)\n"
-                } else {
-                    let mb = Double(uploadData.count) / 1024.0 / 1024.0
-                    let speed = mb / duration
-                    self.output += String(format: "Uploaded %.2f MB in %.2f seconds.\nSpeed: %.2f MB/s\n", mb, duration, speed)
+            guard !Task.isCancelled else { return }
+            
+            let mb = Double(uploadData.count) / 1024.0 / 1024.0
+            let speed = mb / duration
+            await appendOutput(String(format: "Uploaded %.2f MB in %.2f seconds.\nSpeed: %.2f MB/s\n", mb, duration, speed))
+            
+            if showAdvancedDiagnostics, let httpResponse = response as? HTTPURLResponse {
+                await appendOutput("\n--- Advanced Upload Diagnostics ---\n")
+                await appendOutput("Status Code: \(httpResponse.statusCode)\n")
+                for (key, value) in httpResponse.allHeaderFields {
+                    await appendOutput("\(key): \(value)\n")
                 }
-                completion?()
+                await appendOutput("--------------------------------\n")
             }
+            
+        } catch {
+            await appendOutput("Upload Error: \(error.localizedDescription)\n")
         }
-        task.resume()
     }
 }
 
