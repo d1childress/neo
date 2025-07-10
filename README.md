@@ -1,2 +1,114 @@
 # neo
-Network utility app for macOS
+
+A modern, all-in-one network utility app for macOS, built with SwiftUI. Neo provides a suite of tools for network diagnostics, monitoring, and troubleshooting, all in a beautiful, unified interface.
+
+---
+
+## Table of Contents
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## Features
+
+Neo includes the following network tools, accessible via tabs:
+
+- **Info**: View detailed information and statistics for your network interfaces (IP, MAC, DNS, gateway, traffic stats, etc.).
+- **Netstat**: Run various `netstat` commands to inspect routing tables, sockets, protocol stats, and multicast info.
+- **Ping**: Test connectivity to a host with IPv4/IPv6 support and customizable ping count.
+- **Lookup**: Perform DNS lookups using `dig`, `nslookup`, or macOS directory services.
+- **Speed Test**: Benchmark your internet connection's download and upload speeds, with advanced diagnostics.
+- **Trace**: Trace the route to a host using `traceroute` (IPv4/IPv6).
+- **Port Scan**: Scan a host for open TCP ports in a specified range, with optional verbose output.
+- **Whois**: Query domain registration info from various whois servers.
+
+All tools feature a dark, modern UI with monospaced output, copy-to-clipboard, and responsive layouts.
+
+---
+
+## Screenshots
+
+> **Tip:** To display screenshots, add PNG/JPG files to a `screenshots/` folder in the project root and update the image links below.
+
+| Info Tab | Netstat Tab | Ping Tab |
+|----------|-------------|----------|
+| ![Info](screenshots/info.png) | ![Netstat](screenshots/netstat.png) | ![Ping](screenshots/ping.png) |
+
+| Lookup Tab | Speed Test Tab | Trace Tab |
+|------------|---------------|-----------|
+| ![Lookup](screenshots/lookup.png) | ![SpeedTest](screenshots/speedtest.png) | ![Trace](screenshots/trace.png) |
+
+| Port Scan Tab | Whois Tab |
+|---------------|-----------|
+| ![PortScan](screenshots/portscan.png) | ![Whois](screenshots/whois.png) |
+
+---
+
+## Installation
+
+### Prerequisites
+- macOS 12.0 or later
+- Xcode 14 or later
+
+### Build & Run
+1. Clone the repository:
+   ```sh
+   git clone <repo-url>
+   cd neo
+   ```
+2. Open `neo/neo.xcodeproj` in Xcode.
+3. Select the `neo` scheme and your target Mac device.
+4. Press **Run** (⌘R) to build and launch the app.
+
+---
+
+## Usage
+
+Each tool is available as a tab in the main window:
+
+- **Info**: Select a network interface to view its details and live statistics. Click 'Refresh' to update.
+- **Netstat**: Choose the type of network info (routing table, sockets, etc.) and run the command. Output is shown in a scrollable, copyable area.
+- **Ping**: Enter a host, select IPv4/IPv6, and set the ping count. Start/stop pings and copy results.
+- **Lookup**: Enter a domain/IP, select a provider (`dig`, `nslookup`, or `dscacheutil`), and view DNS records.
+- **Speed Test**: Run download/upload/both tests, view speeds, and toggle advanced diagnostics.
+- **Trace**: Enter a host, select IPv4/IPv6, and trace the route. Start/stop as needed.
+- **Port Scan**: Enter a host, set port range, and scan for open TCP ports. Enable verbose for closed port info.
+- **Whois**: Enter a domain, select a whois server, and fetch registration info.
+
+All results can be copied to the clipboard with a single click.
+
+---
+
+## Testing
+
+### Unit Tests
+- Located in `neo/neoTests/neoTests.swift`.
+- To run unit tests:
+  1. Open the project in Xcode.
+  2. Select the `neo` scheme.
+  3. Press **Command-U** to run all tests.
+
+### UI Tests
+- Located in `neo/neoUITests/`.
+- To run UI tests:
+  1. Open the project in Xcode.
+  2. Select the `neo` scheme.
+  3. Press **Command-U** to run all tests (UI and unit).
+
+---
+
+## Contributing
+
+Contributions are welcome! Please open issues or pull requests for bug fixes, new features, or suggestions.
+
+---
+
+## License
+
+[MIT](LICENSE) © d1demos
