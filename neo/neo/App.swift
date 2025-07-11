@@ -104,6 +104,18 @@ struct NeoApp: App {
                         Label("Whois", systemImage: "person.text.rectangle")
                     }
                     .tag(7)
+                    
+                    Group {
+                        if selectedTab == 8 {
+                            SSHView()
+                        } else {
+                            Color.clear
+                        }
+                    }
+                    .tabItem {
+                        Label("SSH", systemImage: "terminal")
+                    }
+                    .tag(8)
                 }
             }
             .frame(minWidth: 800, minHeight: 500)
