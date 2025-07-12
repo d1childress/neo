@@ -27,6 +27,7 @@ Neo includes the following network tools, accessible via tabs:
 - **Trace**: Trace the route to a host using `traceroute` (IPv4/IPv6).
 - **Port Scan**: Scan a host for open TCP ports in a specified range, with optional verbose output.
 - **Whois**: Query domain registration info from various whois servers.
+- **SSH**: Connect to remote servers via SSH with support for both password and key-based authentication.
 
 All tools feature a dark, modern UI with monospaced output, copy-to-clipboard, and responsive layouts.
 
@@ -44,9 +45,9 @@ All tools feature a dark, modern UI with monospaced output, copy-to-clipboard, a
 |------------|---------------|-----------|
 | ![Lookup](screenshots/lookup.png) | ![SpeedTest](screenshots/speedtest.png) | ![Trace](screenshots/trace.png) |
 
-| Port Scan Tab | Whois Tab |
-|---------------|-----------|
-| ![PortScan](screenshots/portscan.png) | ![Whois](screenshots/whois.png) |
+| Port Scan Tab | Whois Tab | SSH Tab |
+|---------------|-----------|---------|
+| ![PortScan](screenshots/portscan.png) | ![Whois](screenshots/whois.png) | ![SSH](screenshots/ssh.png) |
 
 ---
 
@@ -80,6 +81,7 @@ Each tool is available as a tab in the main window:
 - **Trace**: Enter a host, select IPv4/IPv6, and trace the route. Start/stop as needed.
 - **Port Scan**: Enter a host, set port range, and scan for open TCP ports. Enable verbose for closed port info.
 - **Whois**: Enter a domain, select a whois server, and fetch registration info.
+- **SSH**: Enter host, port, username, and choose authentication method (password or SSH key). Connect to remote servers and execute commands interactively.
 
 All results can be copied to the clipboard with a single click.
 
