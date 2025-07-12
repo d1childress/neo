@@ -324,92 +324,26 @@ struct SSHView: View {
     }
 }
 
-// Helper extension for rounded corners
+// Helper extension for rounded corners that works with SwiftUI on macOS
 extension View {
-    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
-        clipShape(RoundedCorner(radius: radius, corners: corners))
+    func cornerRadius(_ radius: CGFloat, corners: RectCorner) -> some View {
+        clipShape(UnevenRoundedRectangle(
+            topLeadingRadius: corners.contains(.topLeft) ? radius : 0,
+            bottomLeadingRadius: corners.contains(.bottomLeft) ? radius : 0,
+            bottomTrailingRadius: corners.contains(.bottomRight) ? radius : 0,
+            topTrailingRadius: corners.contains(.topRight) ? radius : 0
+        ))
     }
 }
 
-struct RoundedCorner: Shape {
-    var radius: CGFloat = .infinity
-    var corners: UIRectCorner = .allCorners
-    
-    func path(in rect: CGRect) -> Path {
-        let path = NSBezierPath(roundedRect: rect, byRoundingCorners: corners, cornerRadii: CGSize(width: radius, height: radius))
-        return Path(path.cgPath)
-    }
-}
-
-extension NSBezierPath {
-    convenience init(roundedRect rect: CGRect, byRoundingCorners corners: UIRectCorner, cornerRadii: CGSize) {
-        self.init()
-        
-        let topLeft = corners.contains(.topLeft) ? cornerRadii.width : 0
-        let topRight = corners.contains(.topRight) ? cornerRadii.width : 0
-        let bottomLeft = corners.contains(.bottomLeft) ? cornerRadii.width : 0
-        let bottomRight = corners.contains(.bottomRight) ? cornerRadii.width : 0
-        
-        move(to: CGPoint(x: rect.minX + topLeft, y: rect.minY))
-        line(to: CGPoint(x: rect.maxX - topRight, y: rect.minY))
-        if topRight > 0 {
-            curve(to: CGPoint(x: rect.maxX, y: rect.minY + topRight),
-                  controlPoint1: CGPoint(x: rect.maxX - topRight/2, y: rect.minY),
-                  controlPoint2: CGPoint(x: rect.maxX, y: rect.minY + topRight/2))
-        }
-        line(to: CGPoint(x: rect.maxX, y: rect.maxY - bottomRight))
-        if bottomRight > 0 {
-            curve(to: CGPoint(x: rect.maxX - bottomRight, y: rect.maxY),
-                  controlPoint1: CGPoint(x: rect.maxX, y: rect.maxY - bottomRight/2),
-                  controlPoint2: CGPoint(x: rect.maxX - bottomRight/2, y: rect.maxY))
-        }
-        line(to: CGPoint(x: rect.minX + bottomLeft, y: rect.maxY))
-        if bottomLeft > 0 {
-            curve(to: CGPoint(x: rect.minX, y: rect.maxY - bottomLeft),
-                  controlPoint1: CGPoint(x: rect.minX + bottomLeft/2, y: rect.maxY),
-                  controlPoint2: CGPoint(x: rect.minX, y: rect.maxY - bottomLeft/2))
-        }
-        line(to: CGPoint(x: rect.minX, y: rect.minY + topLeft))
-        if topLeft > 0 {
-            curve(to: CGPoint(x: rect.minX + topLeft, y: rect.minY),
-                  controlPoint1: CGPoint(x: rect.minX, y: rect.minY + topLeft/2),
-                  controlPoint2: CGPoint(x: rect.minX + topLeft/2, y: rect.minY))
-        }
-        close()
-    }
-    
-    var cgPath: CGPath {
-        let path = CGMutablePath()
-        var points = [CGPoint](repeating: .zero, count: 3)
-        
-        for i in 0 ..< self.elementCount {
-            let type = self.element(at: i, associatedPoints: &points)
-            switch type {
-            case .moveTo:
-                path.move(to: points[0])
-            case .lineTo:
-                path.addLine(to: points[0])
-            case .curveTo:
-                path.addCurve(to: points[2], control1: points[0], control2: points[1])
-            case .closePath:
-                path.closeSubpath()
-            @unknown default:
-                break
-            }
-        }
-        
-        return path
-    }
-}
-
-struct UIRectCorner: OptionSet {
+struct RectCorner: OptionSet {
     let rawValue: Int
     
-    static let topLeft = UIRectCorner(rawValue: 1 << 0)
-    static let topRight = UIRectCorner(rawValue: 1 << 1)
-    static let bottomLeft = UIRectCorner(rawValue: 1 << 2)
-    static let bottomRight = UIRectCorner(rawValue: 1 << 3)
-    static let allCorners: UIRectCorner = [.topLeft, .topRight, .bottomLeft, .bottomRight]
+    static let topLeft = RectCorner(rawValue: 1 << 0)
+    static let topRight = RectCorner(rawValue: 1 << 1)
+    static let bottomLeft = RectCorner(rawValue: 1 << 2)
+    static let bottomRight = RectCorner(rawValue: 1 << 3)
+    static let allCorners: RectCorner = [.topLeft, .topRight, .bottomLeft, .bottomRight]
 }
 
 #if DEBUG
