@@ -35,35 +35,19 @@ All tools feature a dark, modern UI with monospaced output, copy-to-clipboard, a
 
 ## Screenshots
 
-Neo provides a comprehensive suite of network utilities with a modern, dark-themed interface:
+> **Tip:** To display screenshots, add PNG/JPG files to a `screenshots/` folder in the project root and update the image links below.
 
-### Speed Test
-![Speed Test](images/speed-test-view.png)
-*Benchmark your internet connection with download/upload speed tests, featuring advanced diagnostics and real-time results.*
+| Info Tab | Netstat Tab | Ping Tab |
+|----------|-------------|----------|
+| ![Info](screenshots/info.png) | ![Netstat](screenshots/netstat.png) | ![Ping](screenshots/ping.png) |
 
-### DNS Lookup
-![DNS Lookup](images/lookup-view.png)
-*Perform DNS lookups with support for multiple providers, showing detailed resolution information including IPv4/IPv6 addresses.*
+| Lookup Tab | Speed Test Tab | Trace Tab |
+|------------|---------------|-----------|
+| ![Lookup](screenshots/lookup.png) | ![SpeedTest](screenshots/speedtest.png) | ![Trace](screenshots/trace.png) |
 
-### SSH Connection
-![SSH Connection](images/ssh-view.png)
-*Connect to remote servers via SSH with support for both password and key-based authentication, featuring a clean connection interface.*
-
-### Network Ping
-![Network Ping](images/ping-view.png)
-*Test network connectivity with customizable ping counts, showing detailed response times and statistics.*
-
-### Route Tracing
-![Route Tracing](images/trace-view.png)
-*Trace network routes to identify connectivity issues and view the path data takes through the internet.*
-
----
-
-**Additional Views Available:**
-- **Info Tab**: Detailed network interface information and statistics
-- **Netstat Tab**: Network socket and routing table information  
-- **Port Scan Tab**: TCP port scanning with customizable ranges
-- **Whois Tab**: Domain registration information lookup
+| Port Scan Tab | Whois Tab | SSH Tab |
+|---------------|-----------|---------|
+| ![PortScan](screenshots/portscan.png) | ![Whois](screenshots/whois.png) | ![SSH](screenshots/ssh.png) |
 
 ---
 
