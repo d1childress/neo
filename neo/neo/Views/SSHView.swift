@@ -116,7 +116,7 @@ struct SSHView: View {
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                                 .padding(8)
                                 .id("bottom")
-                                .onChange(of: output) { _ in
+                                .onChange(of: output) { _, _ in
                                     withAnimation {
                                         proxy.scrollTo("bottom", anchor: .bottom)
                                     }

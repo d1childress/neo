@@ -31,7 +31,7 @@ struct NetworkInfoView: View {
                 }
                 .pickerStyle(MenuPickerStyle())
                 .frame(maxWidth: 300, alignment: .leading)
-                .onChange(of: selectedInterface) { _ in
+                .onChange(of: selectedInterface) { _, _ in
                     refreshNetworkInfo()
                 }
                 

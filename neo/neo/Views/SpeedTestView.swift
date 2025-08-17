@@ -138,12 +138,11 @@ struct SpeedTestView: View {
         var request = URLRequest(url: downloadURL)
         request.timeoutInterval = 60
         
-        let task = session.downloadTask(with: request) { [weak self] tempURL, response, error in
+        let task = session.downloadTask(with: request) { tempURL, response, error in
             let endTime = Date()
             let duration = endTime.timeIntervalSince(startTime)
             
             DispatchQueue.main.async {
-                guard let self = self else { return }
                 
                 if let error = error {
                     self.output += "Download Error: \(error.localizedDescription)\n"
@@ -211,12 +210,11 @@ struct SpeedTestView: View {
         request.timeoutInterval = 60
         
         let startTime = Date()
-        let task = session.uploadTask(with: request, from: uploadData) { [weak self] data, response, error in
+        let task = session.uploadTask(with: request, from: uploadData) { data, response, error in
             let endTime = Date()
             let duration = endTime.timeIntervalSince(startTime)
             
             DispatchQueue.main.async {
-                guard let self = self else { return }
                 
                 if let error = error {
                     self.output += "Upload Error: \(error.localizedDescription)\n"

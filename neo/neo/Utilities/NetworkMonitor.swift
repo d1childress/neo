@@ -62,7 +62,8 @@ class NetworkMonitor: ObservableObject {
     /// Clear session pool to free memory
     func clearSessionPool() {
         sessionQueue.async(flags: .barrier) {
-            for session in self.sessionPool.values {
+            let sessions = self.sessionPool.values
+            for session in sessions {
                 session.invalidateAndCancel()
             }
             self.sessionPool.removeAll()

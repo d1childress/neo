@@ -10,12 +10,12 @@ class RelaxedURLSessionDelegate: NSObject, URLSessionDelegate {
         if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
             // Get the server's certificate
             if let serverTrust = challenge.protectionSpace.serverTrust {
-                // Perform basic certificate validation
-                var result: SecTrustResultType = .invalid
-                let status = SecTrustEvaluate(serverTrust, &result)
+                // Perform basic certificate validation using the modern API
+                var error: CFError?
+                let isValid = SecTrustEvaluateWithError(serverTrust, &error)
                 
-                // Allow connection only if certificate validation succeeds or has minor issues
-                if status == errSecSuccess && (result == .unspecified || result == .proceed) {
+                // Allow connection only if certificate validation succeeds
+                if isValid {
                     completionHandler(.useCredential, URLCredential(trust: serverTrust))
                     return
                 } else {
