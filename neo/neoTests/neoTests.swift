@@ -15,3 +15,16 @@ struct neoTests {
     }
 
 }
+
+struct NetworkMonitorTests {
+
+    /// Ensure that requesting an optimized session for the same purpose
+    /// from concurrent contexts returns the same instance.
+    @Test func optimizedSessionIsReused() async throws {
+        async let first = NetworkMonitor.shared.getOptimizedSession(for: .speedTest)
+        async let second = NetworkMonitor.shared.getOptimizedSession(for: .speedTest)
+
+        let (session1, session2) = await (first, second)
+        #expect(session1 === session2)
+    }
+}

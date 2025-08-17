@@ -45,13 +45,13 @@ class NetworkMonitor: ObservableObject {
     
     /// Get or create an optimized URLSession for a specific use case
     func getOptimizedSession(for purpose: SessionPurpose) -> URLSession {
-        return sessionQueue.sync {
+        return sessionQueue.sync(flags: .barrier) {
             let key = purpose.rawValue
-            
+
             if let existingSession = sessionPool[key] {
                 return existingSession
             }
-            
+
             let config = purpose.configuration
             let session = URLSession(configuration: config, delegate: purpose.delegate, delegateQueue: nil)
             sessionPool[key] = session
