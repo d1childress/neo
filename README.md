@@ -2,6 +2,8 @@
 
 A modern, all-in-one network utility app for macOS, built with SwiftUI. Neo provides a suite of tools for network diagnostics, monitoring, and troubleshooting, all in a beautiful, unified interface.
 
+<img width="2024" height="1300" alt="trace" src="https://github.com/user-attachments/assets/a76f9c21-ccf6-4548-9833-67cf2515175d" />
+
 ---
 
 ## Table of Contents
@@ -30,24 +32,6 @@ Neo includes the following network tools, accessible via tabs:
 - **SSH**: Connect to remote servers via SSH with support for both password and key-based authentication.
 
 All tools feature a dark, modern UI with monospaced output, copy-to-clipboard, and responsive layouts.
-
----
-
-## Screenshots
-
-> **Tip:** To display screenshots, add PNG/JPG files to a `screenshots/` folder in the project root and update the image links below.
-
-| Info Tab | Netstat Tab | Ping Tab |
-|----------|-------------|----------|
-| ![Info](screenshots/info.png) | ![Netstat](screenshots/netstat.png) | ![Ping](screenshots/ping.png) |
-
-| Lookup Tab | Speed Test Tab | Trace Tab |
-|------------|---------------|-----------|
-| ![Lookup](screenshots/lookup.png) | ![SpeedTest](screenshots/speedtest.png) | ![Trace](screenshots/trace.png) |
-
-| Port Scan Tab | Whois Tab | SSH Tab |
-|---------------|-----------|---------|
-| ![PortScan](screenshots/portscan.png) | ![Whois](screenshots/whois.png) | ![SSH](screenshots/ssh.png) |
 
 ---
 
