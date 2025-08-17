@@ -152,7 +152,12 @@ struct SpeedTestView: View {
                         let data = try Data(contentsOf: tempURL)
                         let mb = Double(data.count) / 1024.0 / 1024.0
                         let speed = mb / duration
-                        self.output += String(format: "Downloaded %.2f MB in %.2f seconds.\nSpeed: %.2f MB/s\n", mb, duration, speed)
+                        self.output += String(
+                            format: "Downloaded %.2f MB in %.2f seconds.\nSpeed: %.2f MB/s\n",
+                            mb,
+                            duration,
+                            speed
+                        )
                         
                         if self.showAdvancedDiagnostics, let httpResponse = response as? HTTPURLResponse {
                             self.output += "\n--- Advanced Diagnostics ---\n"
@@ -239,4 +244,4 @@ struct SpeedTestView_Previews: PreviewProvider {
         SpeedTestView()
     }
 }
-#endif 
+#endif
