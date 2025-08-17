@@ -8,7 +8,6 @@ A modern, all-in-one network utility app for macOS, built with SwiftUI. Neo prov
 
 ## Table of Contents
 - [Features](#features)
-- [Screenshots](#screenshots)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Testing](#testing)
