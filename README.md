@@ -70,30 +70,6 @@ All results can be copied to the clipboard with a single click.
 
 ---
 
-## Testing
-
-### Unit Tests
-- Located in `neo/neoTests/neoTests.swift`.
-- To run unit tests:
-  1. Open the project in Xcode.
-  2. Select the `neo` scheme.
-  3. Press **Command-U** to run all tests.
-
-### UI Tests
-- Located in `neo/neoUITests/`.
-- To run UI tests:
-  1. Open the project in Xcode.
-  2. Select the `neo` scheme.
-  3. Press **Command-U** to run all tests (UI and unit).
-
----
-
-## Contributing
-
-Contributions are welcome! Please open issues or pull requests for bug fixes, new features, or suggestions.
-
----
-
 ## License
 
 [MIT](LICENSE) © d1demos
