@@ -181,8 +181,8 @@ func getNetworkInterfaces() -> [String] {
     defer { freeifaddrs(ifaddrs) }
     
     var ptr = ifaddrs
-    while ptr != nil {
-        let interface = ptr!.pointee
+    while let currentPtr = ptr {
+        let interface = currentPtr.pointee
         let name = String(cString: interface.ifa_name)
         
         if !interfaces.contains(name) && !name.hasPrefix("utun") && !name.hasPrefix("awdl") {
@@ -211,8 +211,8 @@ func getNetworkInterfaceInfo(for interfaceName: String) async -> NetworkInterfac
             var isUp = false
             
             var ptr = ifaddrs
-            while ptr != nil {
-                let interface = ptr!.pointee
+            while let currentPtr = ptr {
+                let interface = currentPtr.pointee
                 let name = String(cString: interface.ifa_name)
                 
                 if name == interfaceName {

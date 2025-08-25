@@ -79,15 +79,38 @@ struct WhoisView: View {
     func whoisDomain() {
         output = ""
         isLookingUp = true
+        
+        // Input validation for domain
+        let trimmedDomain = domain.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedDomain.isEmpty else {
+            output = "Domain cannot be empty."
+            isLookingUp = false
+            return
+        }
+        
+        // Basic input sanitization - allow alphanumeric characters, dots, hyphens, underscores
+        let allowedCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_")
+        guard trimmedDomain.rangeOfCharacter(from: allowedCharacters.inverted) == nil else {
+            output = "Domain contains invalid characters."
+            isLookingUp = false
+            return
+        }
+        
         let task = Process()
         
         task.launchPath = "/usr/bin/whois"
         var arguments = [String]()
         if selectedServer != "Automatic" {
+            // Validate server selection - ensure it's one of our predefined servers
+            guard whoisServers.contains(selectedServer) else {
+                output = "Invalid whois server selected."
+                isLookingUp = false
+                return
+            }
             arguments.append("-h")
             arguments.append(selectedServer)
         }
-        arguments.append(domain)
+        arguments.append(trimmedDomain)
         task.arguments = arguments
         
         let pipe = Pipe()
