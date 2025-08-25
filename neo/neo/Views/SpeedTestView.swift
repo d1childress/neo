@@ -11,63 +11,94 @@ struct SpeedTestView: View {
     @State private var usePrivateRelay: Bool = false
 
     var body: some View {
-        ZStack {
-            VisualEffectView(material: .windowBackground, blendingMode: .behindWindow)
-                .ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 15) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Benchmark basic metrics of your internet connection.")
-                            .foregroundColor(.white)
-                        Toggle("Show advanced diagnostics data", isOn: $showAdvancedDiagnostics)
-                            .foregroundColor(.white)
-                        Toggle("Run test sequentially instead of parallel", isOn: $runSequentially)
-                            .disabled(testType != .both)
-                            .foregroundColor(.white)
-                        Toggle("Use iCloud Private Relay", isOn: $usePrivateRelay)
-                            .disabled(true)
-                            .foregroundColor(.white)
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+            // Header section
+            SectionHeader(
+                "Internet Speed Test",
+                subtitle: "Benchmark your internet connection performance"
+            )
+            
+            // Configuration section
+            Card {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                    HStack(alignment: .top, spacing: DesignTokens.Spacing.xl) {
+                        // Settings section
+                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+                            Text("Test Options")
+                                .font(DesignTokens.Typography.labelMedium)
+                                .foregroundColor(DesignTokens.Colors.textSecondary)
+                            
+                            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                                Toggle("Show advanced diagnostics", isOn: $showAdvancedDiagnostics)
+                                    .font(DesignTokens.Typography.bodyMedium)
+                                
+                                Toggle("Run tests sequentially", isOn: $runSequentially)
+                                    .disabled(testType != .both)
+                                    .font(DesignTokens.Typography.bodyMedium)
+                                
+                                Toggle("Use iCloud Private Relay", isOn: $usePrivateRelay)
+                                    .disabled(true)
+                                    .font(DesignTokens.Typography.bodyMedium)
+                                    .help("This feature is not yet available")
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        // Test type selection
+                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                            Text("Test Type")
+                                .font(DesignTokens.Typography.labelMedium)
+                                .foregroundColor(DesignTokens.Colors.textSecondary)
+                            
+                            Picker("Test Type", selection: $testType) {
+                                Text("Download Only").tag(TestType.downlink)
+                                Text("Upload Only").tag(TestType.uplink)
+                                Text("Both Tests").tag(TestType.both)
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(maxWidth: 250)
+                        }
                     }
-                    Spacer()
-                    Picker("", selection: $testType) {
-                        Text("Downlink").tag(TestType.downlink)
-                            .foregroundColor(.white)
-                        Text("Uplink").tag(TestType.uplink)
-                            .foregroundColor(.white)
-                        Text("Both").tag(TestType.both)
-                            .foregroundColor(.white)
-                    }
-                    .pickerStyle(RadioGroupPickerStyle())
-                    .horizontalRadioGroupLayout()
-                }
-                HStack(alignment: .bottom) {
-                    ScrollView {
-                        Text(output)
-                            .font(.system(.body, design: .monospaced))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                            .padding(8)
-                            .background(Color.black.opacity(0.2))
-                            .cornerRadius(8)
-                            .shadow(color: .black.opacity(0.4), radius: 4, x: 0, y: 2)
-                    }
-                    VStack(spacing: 10) {
-                        Button(isTesting ? "Stop" : "Speed Test") {
+                    
+                    // Action button
+                    HStack {
+                        Button(isTesting ? "Stop Test" : "Start Speed Test") {
                             if isTesting {
                                 isTesting = false
                             } else {
                                 startSpeedTest()
                             }
                         }
-                        .frame(width: 80)
-                        .foregroundColor(.white)
+                        .primaryButtonStyle()
+                        
+                        if isTesting {
+                            HStack(spacing: DesignTokens.Spacing.sm) {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle())
+                                    .scaleEffect(0.8)
+                                Text("Running speed test...")
+                                    .font(DesignTokens.Typography.bodySmall)
+                                    .foregroundColor(DesignTokens.Colors.textSecondary)
+                            }
+                        }
+                        
+                        Spacer()
                     }
                 }
-                .padding(.top, 10)
             }
-            .padding()
+            
+            // Output terminal
+            OutputTerminal(
+                content: output,
+                isLoading: isTesting,
+                copyAction: copyToClipboard,
+                clearAction: output.isEmpty ? nil : { output = "" }
+            )
         }
-        .preferredColorScheme(.dark)
+        .padding(DesignTokens.Spacing.lg)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(DesignTokens.Colors.background)
     }
     
     func copyToClipboard() {

@@ -14,88 +14,117 @@ struct PingView: View {
     @State private var currentTask: Process?
 
     var body: some View {
-        ZStack {
-            VisualEffectView(material: .windowBackground, blendingMode: .behindWindow)
-                .ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 15) {
-                HStack {
-                    Text("Enter the network address to ping.")
-                        .foregroundColor(.white)
-                    Spacer()
-                    Toggle("Enable IPv6", isOn: $enableIPv6)
-                        .foregroundColor(.white)
-                }
-                
-                HStack(alignment: .firstTextBaseline) {
-                    TextField("google.com", text: $host)
-                        .textFieldStyle(.plain)
-                        .padding(6)
-                        .background(Color.gray.opacity(0.2))
-                        .cornerRadius(6)
-                        .foregroundColor(.white)
-                    Text("(ex. 10.0.2.1 or www.example.com)")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-                
-                Picker("", selection: $pingCountOption) {
-                    Text("Send an unlimited number of pings").tag(PingCountOption.unlimited)
-                        .foregroundColor(.white)
-                    HStack {
-                        Text("Send only")
-                            .foregroundColor(.white)
-                        TextField("", text: $pingCountText)
-                            .frame(width: 40)
-                            .textFieldStyle(.plain)
-                            .padding(6)
-                            .background(Color.gray.opacity(0.2))
-                            .cornerRadius(6)
-                            .foregroundColor(.white)
-                        Text("pings")
-                            .foregroundColor(.white)
-                    }.tag(PingCountOption.limited)
-                }
-                .pickerStyle(RadioGroupPickerStyle())
-
-                HStack(alignment: .bottom) {
-                    ScrollView {
-                        Text(output)
-                            .font(.system(.body, design: .monospaced))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                            .padding(8)
-                            .background(Color.black.opacity(0.2))
-                            .cornerRadius(8)
-                            .shadow(color: .black.opacity(0.4), radius: 4, x: 0, y: 2)
-                    }
-
-                    VStack(spacing: 10) {
-                        Button(isPinging ? "Stop" : "Ping") {
-                            if isPinging {
-                                stopPing()
-                            } else {
-                                pingHost()
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+            // Header section
+            SectionHeader(
+                "Ping Test",
+                subtitle: "Test network connectivity to hosts and measure latency"
+            )
+            
+            // Configuration section
+            VStack(spacing: DesignTokens.Spacing.md) {
+                Card {
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+                                EnhancedTextField(
+                                    "Target Host",
+                                    text: $host,
+                                    placeholder: "google.com",
+                                    helpText: "Enter an IP address or domain name (e.g., 8.8.8.8 or www.google.com)",
+                                    isValid: validateHost(host),
+                                    errorMessage: validateHost(host) ? nil : "Invalid host format"
+                                )
+                            }
+                            
+                            Spacer()
+                            
+                            VStack(alignment: .trailing, spacing: DesignTokens.Spacing.sm) {
+                                Toggle("Enable IPv6", isOn: $enableIPv6)
+                                    .font(DesignTokens.Typography.bodyMedium)
+                                    .foregroundColor(DesignTokens.Colors.textPrimary)
                             }
                         }
-                        .frame(width: 80)
-                        .foregroundColor(.white)
                         
-                        Button(action: copyToClipboard) {
-                            Image(systemName: "doc.on.doc")
-                                .foregroundColor(.white)
+                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                            Text("Ping Count")
+                                .font(DesignTokens.Typography.labelMedium)
+                                .foregroundColor(DesignTokens.Colors.textSecondary)
+                            
+                            Picker("Ping Count", selection: $pingCountOption) {
+                                Text("Send unlimited pings").tag(PingCountOption.unlimited)
+                                HStack {
+                                    Text("Send only")
+                                    TextField("Count", text: $pingCountText)
+                                        .frame(width: 60)
+                                        .textFieldStyle(.roundedBorder)
+                                    Text("pings")
+                                }.tag(PingCountOption.limited)
+                            }
+                            .pickerStyle(RadioGroupPickerStyle())
                         }
                     }
                 }
-                .padding(.top, 10)
+                
+                // Action buttons
+                HStack(spacing: DesignTokens.Spacing.md) {
+                    Button(isPinging ? "Stop Ping" : "Start Ping") {
+                        if isPinging {
+                            stopPing()
+                        } else {
+                            pingHost()
+                        }
+                    }
+                    .primaryButtonStyle()
+                    .disabled(!validateHost(host))
+                    
+                    if !output.isEmpty && !isPinging {
+                        Button("Clear Output") {
+                            output = ""
+                        }
+                        .secondaryButtonStyle()
+                    }
+                    
+                    Spacer()
+                    
+                    if isPinging {
+                        HStack(spacing: DesignTokens.Spacing.sm) {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle())
+                                .scaleEffect(0.8)
+                            Text("Pinging...")
+                                .font(DesignTokens.Typography.bodySmall)
+                                .foregroundColor(DesignTokens.Colors.textSecondary)
+                        }
+                    }
+                }
             }
-            .padding()
+            
+            // Output terminal
+            OutputTerminal(
+                content: output,
+                isLoading: isPinging,
+                copyAction: copyToClipboard,
+                clearAction: output.isEmpty ? nil : { output = "" }
+            )
         }
-        .preferredColorScheme(.dark)
+        .padding(DesignTokens.Spacing.lg)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(DesignTokens.Colors.background)
     }
     
     func copyToClipboard() {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(output, forType: .string)
+    }
+    
+    private func validateHost(_ host: String) -> Bool {
+        let trimmedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedHost.isEmpty else { return false }
+        guard trimmedHost.count <= 253 else { return false }
+        
+        let allowedCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_:")
+        return trimmedHost.rangeOfCharacter(from: allowedCharacters.inverted) == nil
     }
 
     func stopPing() {

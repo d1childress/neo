@@ -9,104 +9,122 @@ struct NetworkInfoView: View {
     @State private var isLoading = false
     
     var body: some View {
-        ZStack {
-            VisualEffectView(material: .windowBackground, blendingMode: .behindWindow)
-                .ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Select a network interface for information.")
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Button("Refresh") {
-                        refreshNetworkInfo()
-                    }
-                    .foregroundColor(.white)
-                }
+        ScrollView {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                // Header section
+                SectionHeader(
+                    "Network Interface Information",
+                    subtitle: "Monitor network interface details and statistics",
+                    actionTitle: "Refresh",
+                    action: refreshNetworkInfo
+                )
                 
-                Picker("", selection: $selectedInterface) {
-                    ForEach(availableInterfaces, id: \.self) { iface in
-                        Text(getInterfaceDisplayName(iface))
-                            .foregroundColor(.primary)
+                // Interface selector
+                Card {
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+                        Text("Network Interface")
+                            .font(DesignTokens.Typography.labelMedium)
+                            .foregroundColor(DesignTokens.Colors.textSecondary)
+                        
+                        Picker("Select Interface", selection: $selectedInterface) {
+                            ForEach(availableInterfaces, id: \.self) { iface in
+                                Text(getInterfaceDisplayName(iface))
+                                    .tag(iface)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: 300, alignment: .leading)
+                        .onChange(of: selectedInterface) { _, _ in
+                            refreshNetworkInfo()
+                        }
                     }
-                }
-                .pickerStyle(MenuPickerStyle())
-                .frame(maxWidth: 300, alignment: .leading)
-                .onChange(of: selectedInterface) { _, _ in
-                    refreshNetworkInfo()
                 }
                 
                 if isLoading {
-                    HStack {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        Text("Loading network information...")
-                            .foregroundColor(.white)
+                    LoadingView(message: "Loading network information...")
+                        .frame(maxWidth: .infinity)
+                } else if let info = networkInfo {
+                    HStack(alignment: .top, spacing: DesignTokens.Spacing.xl) {
+                        // Interface Information Card
+                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                            Text("Interface Details")
+                                .font(DesignTokens.Typography.headingSmall)
+                                .foregroundColor(DesignTokens.Colors.textPrimary)
+                            
+                            Card {
+                                VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                                    InfoRow("Interface", value: selectedInterface)
+                                    InfoRow("Hardware Address", value: info.macAddress)
+                                    InfoRow("IP Address", value: info.ipAddress)
+                                    InfoRow("Subnet Mask", value: info.subnetMask)
+                                    
+                                    HStack {
+                                        Text("Status")
+                                            .font(DesignTokens.Typography.labelMedium)
+                                            .foregroundColor(DesignTokens.Colors.textSecondary)
+                                            .frame(minWidth: 120, alignment: .leading)
+                                        
+                                        StatusBadge(
+                                            text: info.status,
+                                            status: info.status == "Active" ? .active : .inactive
+                                        )
+                                        
+                                        Spacer()
+                                    }
+                                    .padding(.vertical, DesignTokens.Spacing.xxs)
+                                    
+                                    if !info.gateway.isEmpty {
+                                        InfoRow("Gateway", value: info.gateway)
+                                    }
+                                    if !info.dnsServers.isEmpty {
+                                        InfoRow("DNS Servers", value: info.dnsServers.joined(separator: ", "))
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Transfer Statistics Card
+                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                            Text("Transfer Statistics")
+                                .font(DesignTokens.Typography.headingSmall)
+                                .foregroundColor(DesignTokens.Colors.textPrimary)
+                            
+                            Card {
+                                VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                                    InfoRow("Bytes Sent", value: formatBytes(info.bytesSent))
+                                    InfoRow("Bytes Received", value: formatBytes(info.bytesReceived))
+                                    InfoRow("Packets Sent", value: "\(info.packetsSent)")
+                                    InfoRow("Packets Received", value: "\(info.packetsReceived)")
+                                    
+                                    if info.sendErrors > 0 || info.receiveErrors > 0 {
+                                        Divider()
+                                            .padding(.vertical, DesignTokens.Spacing.xs)
+                                        
+                                        Text("Error Statistics")
+                                            .font(DesignTokens.Typography.labelMedium)
+                                            .foregroundColor(DesignTokens.Colors.error)
+                                        
+                                        InfoRow("Send Errors", value: "\(info.sendErrors)")
+                                        InfoRow("Receive Errors", value: "\(info.receiveErrors)")
+                                    }
+                                }
+                            }
+                        }
                     }
                 } else {
-                    HStack(alignment: .top, spacing: 40) {
-                        // Interface Information
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Interface Information").font(.headline).foregroundColor(.white)
-                            GroupBox {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    if let info = networkInfo {
-                                        Text("Interface: \(selectedInterface)")
-                                        Text("Hardware Address: \(info.macAddress)")
-                                        Text("IP Address: \(info.ipAddress)")
-                                        Text("Subnet Mask: \(info.subnetMask)")
-                                        Text("Status: \(info.status)")
-                                        if !info.gateway.isEmpty {
-                                            Text("Gateway: \(info.gateway)")
-                                        }
-                                        if !info.dnsServers.isEmpty {
-                                            Text("DNS Servers: \(info.dnsServers.joined(separator: ", "))")
-                                        }
-                                    } else {
-                                        Text("No information available")
-                                    }
-                                }
-                                .font(.system(.body, design: .monospaced))
-                                .foregroundColor(.white)
-                                .padding(8)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .background(Color(.gray).opacity(0.2))
-                            .cornerRadius(10)
-                            .shadow(color: .black.opacity(0.4), radius: 4, x: 0, y: 2)
-                        }
-                        // Transfer Statistics
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Transfer Statistics").font(.headline).foregroundColor(.white)
-                            GroupBox {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    if let info = networkInfo {
-                                        Text("Bytes Sent: \(formatBytes(info.bytesSent))")
-                                        Text("Bytes Received: \(formatBytes(info.bytesReceived))")
-                                        Text("Packets Sent: \(info.packetsSent)")
-                                        Text("Packets Received: \(info.packetsReceived)")
-                                        Text("Send Errors: \(info.sendErrors)")
-                                        Text("Receive Errors: \(info.receiveErrors)")
-                                    } else {
-                                        Text("No statistics available")
-                                    }
-                                }
-                                .font(.system(.body, design: .monospaced))
-                                .foregroundColor(.white)
-                                .padding(8)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .background(Color(.gray).opacity(0.2))
-                            .cornerRadius(10)
-                            .shadow(color: .black.opacity(0.4), radius: 4, x: 0, y: 2)
-                        }
-                    }
-                    .padding(.top, 10)
+                    EmptyStateView(
+                        icon: "wifi.slash",
+                        title: "No Network Information",
+                        message: "Unable to retrieve network interface information. Please check your network connection and try again.",
+                        actionTitle: "Try Again",
+                        action: refreshNetworkInfo
+                    )
                 }
-                Spacer()
             }
-            .padding()
+            .padding(DesignTokens.Spacing.lg)
         }
-        .preferredColorScheme(.dark)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(DesignTokens.Colors.background)
         .onAppear {
             loadAvailableInterfaces()
             refreshNetworkInfo()
