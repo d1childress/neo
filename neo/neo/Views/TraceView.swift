@@ -82,11 +82,29 @@ struct TraceView: View {
     func traceHost() {
         output = ""
         isTracing = true
+        
+        // Input validation for host
+        let trimmedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedHost.isEmpty else {
+            output = "Host cannot be empty."
+            isTracing = false
+            return
+        }
+        
+        // Basic input sanitization - allow alphanumeric characters, dots, hyphens, underscores, colons
+        let allowedCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_:")
+        guard trimmedHost.rangeOfCharacter(from: allowedCharacters.inverted) == nil else {
+            output = "Host contains invalid characters."
+            isTracing = false
+            return
+        }
+        
         let task = Process()
         currentTask = task
         
-        task.launchPath = "/usr/bin/env"
-        task.arguments = [enableIPv6 ? "traceroute6" : "traceroute", host]
+        // Use direct path to avoid shell interpretation and prevent command injection
+        task.launchPath = enableIPv6 ? "/usr/bin/traceroute6" : "/usr/bin/traceroute"
+        task.arguments = [trimmedHost]
         
         let pipe = Pipe()
         task.standardOutput = pipe

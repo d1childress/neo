@@ -283,8 +283,8 @@ struct SSHView: View {
                     
                     // Auto-respond to password prompt if password is provided
                     if !self.useKeyAuth && !self.password.isEmpty && str.lowercased().contains("password:") {
-                        if let inputPipe = self.inputPipe {
-                            let passwordData = (self.password + "\n").data(using: .utf8)!
+                        if let inputPipe = self.inputPipe,
+                           let passwordData = (self.password + "\n").data(using: .utf8) {
                             inputPipe.fileHandleForWriting.write(passwordData)
                             self.password = "" // Clear password after use
                         }

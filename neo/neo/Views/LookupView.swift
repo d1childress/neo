@@ -40,6 +40,19 @@ struct LookupView: View {
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
+                HStack {
+                    Spacer()
+                    Button(action: lookupDomain) {
+                        if isLookingUp {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Text("Lookup")
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .disabled(isLookingUp)
+                }
                 ZStack(alignment: .bottomTrailing) {
                     ScrollView {
                         Text(output)
@@ -51,6 +64,11 @@ struct LookupView: View {
                     .background(Color.black.opacity(0.2))
                     .cornerRadius(8)
                     .shadow(color: .black.opacity(0.4), radius: 4, x: 0, y: 2)
+                    Button(action: copyToClipboard) {
+                        Image(systemName: "doc.on.doc")
+                            .foregroundColor(.white)
+                    }
+                    .padding(8)
                 }
             }
             .padding()
@@ -66,18 +84,35 @@ struct LookupView: View {
     func lookupDomain() {
         output = ""
         isLookingUp = true
+        
+        // Input validation for domain
+        let trimmedDomain = domain.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedDomain.isEmpty else {
+            output = "Domain cannot be empty."
+            isLookingUp = false
+            return
+        }
+        
+        // Basic input sanitization - allow alphanumeric characters, dots, hyphens, underscores, colons
+        let allowedCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_:")
+        guard trimmedDomain.rangeOfCharacter(from: allowedCharacters.inverted) == nil else {
+            output = "Domain contains invalid characters."
+            isLookingUp = false
+            return
+        }
+        
         let task = Process()
         
         switch selectedProvider {
         case .dig:
             task.launchPath = "/usr/bin/dig"
-            task.arguments = [domain]
+            task.arguments = [trimmedDomain]
         case .nslookup:
             task.launchPath = "/usr/bin/nslookup"
-            task.arguments = [domain]
+            task.arguments = [trimmedDomain]
         case .dscache:
             task.launchPath = "/usr/bin/dscacheutil"
-            task.arguments = ["-q", "host", "-a", "name", domain]
+            task.arguments = ["-q", "host", "-a", "name", trimmedDomain]
         }
         
         let pipe = Pipe()

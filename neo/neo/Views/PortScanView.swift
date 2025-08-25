@@ -100,6 +100,22 @@ struct PortScanView: View {
         output = ""
         isScanning = true
         
+        // Input validation for host
+        let trimmedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedHost.isEmpty else {
+            output = "Host cannot be empty."
+            isScanning = false
+            return
+        }
+        
+        // Basic input sanitization - allow alphanumeric characters, dots, hyphens, underscores, colons
+        let allowedCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_:")
+        guard trimmedHost.rangeOfCharacter(from: allowedCharacters.inverted) == nil else {
+            output = "Host contains invalid characters."
+            isScanning = false
+            return
+        }
+        
         let start: Int
         let end: Int
         
@@ -119,17 +135,22 @@ struct PortScanView: View {
 
         DispatchQueue.global(qos: .userInitiated).async {
             var openPorts: [Int] = []
+            let openPortsQueue = DispatchQueue(label: "openPorts.queue", attributes: .concurrent)
             let group = DispatchGroup()
             for port in start...end {
                 group.enter()
-                let connection = NWConnection(host: NWEndpoint.Host(self.host), port: NWEndpoint.Port(rawValue: UInt16(port))!, using: .tcp)
+                guard let portValue = NWEndpoint.Port(rawValue: UInt16(port)) else {
+                    group.leave()
+                    continue
+                }
+                let connection = NWConnection(host: NWEndpoint.Host(trimmedHost), port: portValue, using: .tcp)
                 let startTime = Date()
                 
                 connection.stateUpdateHandler = { state in
                     switch state {
                     case .ready:
                         _ = Date().timeIntervalSince(startTime)
-                        DispatchQueue.main.async {
+                        openPortsQueue.async(flags: .barrier) {
                             openPorts.append(port)
                         }
                         connection.cancel()
@@ -150,17 +171,19 @@ struct PortScanView: View {
             }
             
             group.notify(queue: .main) {
-                var results = ""
-                if openPorts.isEmpty {
-                    results = "No open ports found."
-                } else {
-                    results = "Open ports on \(self.host):\n"
-                    for port in openPorts.sorted() {
-                        results += "\(port)\n"
+                openPortsQueue.sync {
+                    var results = ""
+                    if openPorts.isEmpty {
+                        results = "No open ports found."
+                    } else {
+                        results = "Open ports on \(trimmedHost):\n"
+                        for port in openPorts.sorted() {
+                            results += "\(port)\n"
+                        }
                     }
+                    self.output = results
+                    self.isScanning = false
                 }
-                self.output = results
-                self.isScanning = false
             }
         }
     }
